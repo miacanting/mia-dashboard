@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Mia餐飲月度經營儀表板(免費版)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #FAF7F2;
+  --card: #FFFFFF;
+  --ink: #1F2933;
+  --ink-2: #4A5568;
+  --muted: #94A3B8;
+  --line: #ECE7DD;
+  --primary: #E85D2F;
+  --primary-soft: #FFE9DD;
+  --green: #2E9C6E;
+  --green-soft: #D9F2E5;
+  --red: #D64545;
+  --red-soft: #FCE3E3;
+  --gold: #D4A02E;
+  --blue: #2F6FE8;
+  --shadow: 0 2px 6px rgba(31,41,51,.04), 0 8px 24px rgba(31,41,51,.06);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select { font-family: inherit; }
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+.sidebar {
+  background: #FFFFFF;
+  border-right: 1px solid var(--line);
+  padding: 20px 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px 18px 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.brand-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--primary);
+  color: white; display: grid; place-items: center;
+  font-weight: 700; font-size: 18px;
+}
+.brand-name { font-weight: 700; font-size: 15px; line-height: 1.25; }
+.brand-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-btn {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 15px; font-weight: 500;
+  text-align: left; width: 100%;
+  transition: all .15s;
+}
+.nav-btn:hover { background: var(--bg); }
+.nav-btn.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.nav-icon { font-size: 18px; }
+.export-btn {
+  margin-top: auto;
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  background: var(--ink); color: white;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px; font-weight: 600;
+  width: 100%;
+}
+.export-btn:hover { background: #000; }
+.export-btn:disabled { background: var(--muted); }
+
+.main { padding: 24px 28px 100px 28px; overflow-x: hidden; }
+.page-title {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 8px;
+}
+.page-title h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.page-title .meta { color: var(--muted); font-size: 13px; }
+
+.month-card {
+  background: linear-gradient(135deg, #FFF4ED 0%, #FFE9DD 100%);
+  border: 1px solid var(--primary-soft);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.month-card .mc-emoji { font-size: 24px; }
+.month-card .mc-text { flex: 1 1 200px; }
+.month-card .mc-title { font-weight: 700; font-size: 14px; color: var(--ink); }
+.month-card .mc-hint { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.month-input {
+  background: white;
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  outline: none;
+  min-width: 180px;
+}
+.month-input:focus { box-shadow: 0 0 0 3px rgba(232,93,47,.2); }
+
+.section-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 28px 0 16px;
+}
+.section-divider h2 {
+  margin: 0;
+  font-size: 18px; font-weight: 700;
+}
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.card h3 {
+  margin: 0 0 14px;
+  font-size: 14px; color: var(--ink-2); font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.empty-state {
+  text-align: center; padding: 30px 16px;
+  color: var(--muted); font-size: 13px;
+}
+.empty-state .ic { font-size: 36px; margin-bottom: 8px; opacity: .5; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  position: relative; overflow: hidden;
+}
+.kpi-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.kpi-value { font-size: 24px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+.kpi-value .unit { font-size: 13px; color: var(--muted); margin-right: 2px; font-weight: 500; }
+.kpi-delta { font-size: 12px; margin-top: 4px; font-weight: 500; }
+.kpi-delta.up { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+.kpi.accent .kpi-value { color: var(--primary); }
+.kpi.green .kpi-value { color: var(--green); }
+.kpi.red .kpi-value { color: var(--red); }
+
+.row-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 16px; }
+.row-2.even { grid-template-columns: 1fr 1fr; }
+
+.chart-wrap { position: relative; height: 240px; }
+.chart-wrap.tall { height: 300px; }
+
+.item-row {
+  display: grid; grid-template-columns: 28px 1fr auto auto;
+  align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.item-row:last-child { border-bottom: none; }
+.item-rank {
+  width: 24px; height: 24px; border-radius: 8px;
+  background: var(--bg); color: var(--ink-2);
+  font-size: 12px; font-weight: 700;
+  display: grid; place-items: center;
+}
+.item-rank.top { background: var(--primary); color: white; }
+.item-name { font-size: 14px; font-weight: 500; }
+.item-meta { font-size: 12px; color: var(--muted); }
+.item-amount { font-weight: 600; font-size: 14px; }
+
+.sales-entry-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr 36px;
+  gap: 10px; align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sales-entry-row.header {
+  font-size: 12px; color: var(--muted); font-weight: 600;
+  padding: 8px 0; border-bottom: 2px solid var(--line);
+}
+.cell-input {
+  border: 1px solid var(--line);
+  background: white;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+}
+.cell-input:focus { border-color: var(--primary); }
+.cell-input.subtotal {
+  border: none; background: transparent;
+  font-weight: 700; color: var(--primary);
+  text-align: right;
+}
+.del-btn {
+  width: 32px; height: 32px;
+  background: var(--red-soft); color: var(--red);
+  border-radius: 8px;
+  font-size: 16px; font-weight: 700;
+  display: grid; place-items: center;
+}
+.add-row-btn {
+  margin-top: 14px; width: 100%;
+  padding: 14px;
+  background: var(--bg);
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  color: var(--ink-2);
+  font-size: 14px; font-weight: 600;
+}
+.add-row-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.submit-btn {
+  background: var(--primary); color: white;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px; font-weight: 700;
+  width: 100%;
+}
+.submit-btn:disabled { background: var(--line); color: var(--muted); }
+
+.cost-cats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.cost-cat {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 14px 8px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  border: 2px solid transparent;
+  transition: all .15s;
+}
+.cost-cat.active { border-color: var(--primary); background: var(--primary-soft); }
+.cost-cat .emoji { font-size: 24px; display: block; }
+.cost-cat .lbl { font-size: 12px; font-weight: 600; margin-top: 4px; }
+
+.amt-input-wrap {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.amt-input {
+  font-size: 36px; font-weight: 700; color: var(--ink);
+  text-align: center;
+  border: none; outline: none;
+  width: 100%; background: transparent;
+}
+.amt-input::placeholder { color: var(--line); }
+.amt-note {
+  margin-top: 10px; width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.cost-list-row {
+  display: grid; grid-template-columns: 60px 1fr auto 32px;
+  align-items: center; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cost-list-row:last-child { border-bottom: none; }
+.cost-cat-tag {
+  font-size: 11px; font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg); color: var(--ink-2);
+  text-align: center;
+}
+
+.insight-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--primary);
+  margin-bottom: 12px;
+}
+.insight-card.warn { border-left-color: var(--gold); }
+.insight-card.bad { border-left-color: var(--red); }
+.insight-card.good { border-left-color: var(--green); }
+.insight-card h4 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+.insight-card p { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.insight-card .tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 12px;
+  margin-bottom: 8px;
+}
+.tag.primary { background: var(--primary-soft); color: var(--primary); }
+.tag.warn { background: #FFF3D6; color: var(--gold); }
+.tag.bad { background: var(--red-soft); color: var(--red); }
+.tag.good { background: var(--green-soft); color: var(--green); }
+
+.pl-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.pl-row.total {
+  border-top: 2px solid var(--ink);
+  border-bottom: none;
+  margin-top: 8px;
+  padding-top: 14px;
+  font-weight: 700; font-size: 16px;
+}
+.pl-bar { width: 100px; height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.pl-bar-fill { height: 100%; background: var(--primary); }
+.pl-amt { font-weight: 600; min-width: 90px; text-align: right; }
+
+.page { display: none; }
+.page.active { display: block; }
+
+.toast {
+  position: fixed;
+  bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: white;
+  padding: 12px 22px;
+  border-radius: 30px;
+  font-size: 14px; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  opacity: 0; pointer-events: none;
+  transition: all .3s;
+  z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.export-overlay {
+  position: fixed; inset: 0;
+  background: rgba(31,41,51,.85);
+  z-index: 9999;
+  display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column;
+  color: white; gap: 16px;
+}
+.export-overlay.show { display: flex; }
+.export-spinner {
+  width: 50px; height: 50px;
+  border: 4px solid rgba(255,255,255,.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); }}
+
+.bottom-nav { display: none; }
+.float-export { display: none; }
+
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { padding: 16px 14px 88px 14px; }
+  .page-title h1 { font-size: 19px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .kpi { padding: 14px; }
+  .kpi-value { font-size: 20px; }
+  .row-2, .row-2.even { grid-template-columns: 1fr; gap: 12px; }
+  .cost-cats { grid-template-columns: repeat(3, 1fr); }
+  .chart-wrap { height: 200px; }
+  .month-input { min-width: 100%; }
+
+  .sales-entry-row {
+    grid-template-columns: 1fr 32px;
+    grid-template-rows: auto auto auto auto;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 12px;
+    border-bottom: none;
+    margin-bottom: 8px;
+  }
+  .sales-entry-row.header { display: none; }
+  .sales-entry-row .c-name { grid-column: 1; grid-row: 1; }
+  .sales-entry-row .c-price { grid-column: 1; grid-row: 2; }
+  .sales-entry-row .c-qty { grid-column: 1; grid-row: 3; }
+  .sales-entry-row .c-sub { grid-column: 1; grid-row: 4; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .sales-entry-row .c-del { grid-column: 2; grid-row: 1 / 4; align-self: center; }
+  .cell-input.subtotal { text-align: left; padding: 0; font-size: 16px; background: transparent; }
+
+  .bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--line);
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom)) 4px;
+    z-index: 100;
+  }
+  .bn-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px;
+    color: var(--muted);
+    font-size: 12px; font-weight: 500;
+  }
+  .bn-btn .ic { font-size: 22px; }
+  .bn-btn.active { color: var(--primary); }
+
+  .float-export {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    position: fixed;
+    top: 12px; right: 12px;
+    background: var(--ink); color: white;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+    z-index: 50;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">M</div>
+      <div>
+        <div class="brand-name">Mia餐飲<br/>月度經營儀表板</div>
+        <div class="brand-sub">免費版</div>
+      </div>
+    </div>
+    <button class="nav-btn active" data-page="sales"><span class="nav-icon">📝</span>銷售紀錄</button>
+    <button class="nav-btn" data-page="cost"><span class="nav-icon">💸</span>成本紀錄</button>
+    <button class="nav-btn" data-page="overview"><span class="nav-icon">📊</span>本月總覽</button>
+    <button class="export-btn" onclick="exportAllPages()">📥 匯出 Excel</button>
+  </aside>
+
+  <main class="main">
+    <!-- 1. SALES ENTRY -->
+    <section class="page active" id="page-sales">
+      <div class="page-title">
+        <h1>銷售紀錄</h1>
+        <span class="meta">每一行 = 一個品項在這個月賣了幾份</span>
+      </div>
+
+      <div class="month-card">
+        <span class="mc-emoji">📅</span>
+        <div class="mc-text">
+          <div class="mc-title">本份報告對應的月份</div>
+          <div class="mc-hint">請選擇你要記錄的月份。</div>
+        </div>
+        <input type="month" class="month-input" id="sales-month" placeholder="yyyy-mm" />
+      </div>
+
+      <div class="card" id="sales-content-card" style="margin-bottom: 14px;">
+        <h3 id="sales-month-title">銷售明細</h3>
+        <div class="sales-entry-row header">
+          <div class="c-name">品項名稱</div>
+          <div class="c-price">單價</div>
+          <div class="c-qty">本月份數</div>
+          <div class="c-sub" style="text-align:right;">小計</div>
+          <div class="c-del"></div>
+        </div>
+        <div id="sales-entries"></div>
+        <button class="add-row-btn" onclick="addSalesRow()">＋ 新增一筆品項</button>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="kpi accent">
+          <div class="kpi-label">品項數</div>
+          <div class="kpi-value"><span id="sales-count">0</span> <span class="unit">項</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">總份數</div>
+          <div class="kpi-value"><span id="sales-qty">0</span> <span class="unit">份</span></div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">本月營收</div>
+          <div class="kpi-value"><span class="unit">NT$</span><span id="sales-total">0</span></div>
+        </div>
+      </div>
+
+      <button class="submit-btn" id="sales-submit-btn" onclick="saveSales()" style="margin-top:14px;">儲存這個月的銷售 ✓</button>
+    </section>
+
+    <!-- 2. COST ENTRY -->
+    <section class="page" id="page-cost">
+      <div class="page-title">
+        <h1>成本紀錄</h1>
+        <span class="meta">記錄房租、食材、水電等所有支出</span>
+      </div>
+
+      <div class="month-card">
+        <span class="mc-emoji">📅</span>
+        <div class="mc-text">
+          <div class="mc-title">本份報告對應的月份</div>
+          <div class="mc-hint">請選擇你要記錄的月份。</div>
+        </div>
+        <input type="month" class="month-input" id="cost-month" placeholder="yyyy-mm" />
+      </div>
+
+      <div class="card" style="margin-bottom: 14px;">
+        <h3>選擇支出類別</h3>
+        <div class="cost-cats" id="cost-cats">
+          <div class="cost-cat active" data-cat="食材"><span class="emoji">🥬</span><div class="lbl">食材</div></div>
+          <div class="cost-cat" data-cat="房租"><span class="emoji">🏠</span><div class="lbl">房租</div></div>
+          <div class="cost-cat" data-cat="水電網路瓦斯"><span class="emoji">💡</span><div class="lbl">水電網路<br/>瓦斯</div></div>
+          <div class="cost-cat" data-cat="人事"><span class="emoji">👨‍🍳</span><div class="lbl">人事</div></div>
+          <div class="cost-cat" data-cat="外送平台手續費"><span class="emoji">🛵</span><div class="lbl">外送平台<br/>手續費</div></div>
+          <div class="cost-cat" data-cat="雜支"><span class="emoji">📦</span><div class="lbl">雜支</div></div>
+        </div>
+      </div>
+
+      <div class="amt-input-wrap" style="margin-bottom: 14px;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">輸入金額 (NT$)</div>
+        <input class="amt-input" id="cost-amt" type="number" inputmode="numeric" placeholder="0" />
+        <input class="amt-note" id="cost-note" placeholder="備註（選填，例：本月房租 / 上週食材進貨）" />
+      </div>
+
+      <button class="submit-btn" onclick="addCost()">記下這筆 ✓</button>
+
+      <div class="card" style="margin-top: 16px;">
+        <h3 id="cost-month-title">已記錄成本</h3>
+        <div id="cost-list"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid var(--ink);">
+          <span style="font-weight:700;font-size:14px;">本月支出小計</span>
+          <span style="font-weight:700;font-size:18px;color:var(--red);">NT$ <span id="cost-total">0</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. OVERVIEW + INSIGHTS -->
+    <section class="page" id="page-overview">
+      <div class="page-title">
+        <h1>本月總覽</h1>
+        <span class="meta">營收、成本、淨利一頁看清</span>
+      </div>
+
+      <div class="month-card">
+        <span class="mc-emoji">📅</span>
+        <div class="mc-text">
+          <div class="mc-title">本份報告對應的月份</div>
+          <div class="mc-hint">選擇月份後，下方所有數字會切換成那個月的報表。</div>
+        </div>
+        <input type="month" class="month-input" id="overview-month" placeholder="yyyy-mm" />
+      </div>
+
+      <div id="no-month-prompt" class="card" style="display:none;">
+        <div class="empty-state">
+          <div class="ic">📅</div>
+          <div style="font-weight:600;color:var(--ink-2);margin-bottom:4px;">請先選擇月份</div>
+          <div>在上方選擇要查看的月份，系統會自動帶出該月份的營收與支出資料。</div>
+        </div>
+      </div>
+
+      <div id="overview-content">
+
+        <div class="kpi-grid">
+          <div class="kpi accent">
+            <div class="kpi-label">本月營收</div>
+            <div class="kpi-value"><span class="unit">NT$</span><span id="kpi-revenue">0</span></div>
+            <div class="kpi-delta" id="kpi-revenue-delta">— 比上月</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">品項數 / 總份數</div>
+            <div class="kpi-value"><span id="kpi-items">0</span> <span class="unit">項</span></div>
+            <div class="kpi-delta" id="kpi-items-delta">售出 0 份</div>
+          </div>
+          <div class="kpi red">
+            <div class="kpi-label">本月支出</div>
+            <div class="kpi-value"><span class="unit">NT$</span><span id="kpi-cost">0</span></div>
+            <div class="kpi-delta" id="kpi-cost-delta">食材 + 固定支出</div>
+          </div>
+          <div class="kpi" id="kpi-net-card">
+            <div class="kpi-label">本月淨利</div>
+            <div class="kpi-value"><span class="unit">NT$</span><span id="kpi-net">0</span></div>
+            <div class="kpi-delta" id="kpi-margin">淨利率 0%</div>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="card">
+            <h3>本月品項銷售排行</h3>
+            <div class="chart-wrap"><canvas id="chart-items"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>本月支出分布</h3>
+            <div class="chart-wrap"><canvas id="chart-cost-pie"></canvas></div>
+          </div>
+        </div>
+
+        <div class="row-2 even">
+          <div class="card">
+            <h3>本月熱賣 TOP 5</h3>
+            <div id="top-items"></div>
+          </div>
+          <div class="card">
+            <h3>本月損益快覽</h3>
+            <div id="pl-quick"></div>
+          </div>
+        </div>
+
+        <div class="section-divider"><h2>💡 經營洞察</h2></div>
+        <div id="insight-list"></div>
+
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <button class="bn-btn active" data-page="sales"><span class="ic">📝</span>銷售</button>
+  <button class="bn-btn" data-page="cost"><span class="ic">💸</span>成本</button>
+  <button class="bn-btn" data-page="overview"><span class="ic">📊</span>總覽</button>
+</nav>
+<button class="float-export" onclick="exportAllPages()">📥 匯出 Excel</button>
+
+<div class="toast" id="toast"></div>
+
+<div class="export-overlay" id="export-overlay">
+  <div class="export-spinner"></div>
+  <div id="export-status" style="font-size:16px;">準備中...</div>
+</div>
+
+<script>
+/* ============ Chart.js 全域設定（關掉動畫讓匯出截圖能完整抓到） ============ */
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.animation = false;
+  if (Chart.defaults.animations) {
+    Chart.defaults.animations.colors = false;
+    Chart.defaults.animations.x = false;
+    Chart.defaults.animations.y = false;
+  }
+}
+
+/* ============ HELPERS ============ */
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('en-US');
+function monthStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+function monthLabel(m) {
+  if (!m) return '';
+  const [y, mo] = m.split('-');
+  return `${y} 年 ${parseInt(mo,10)} 月`;
+}
+function showToast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+/* ============ DATA MODEL ============ */
+let SALES = [];
+let COSTS = [];
+
+// === 不持久化資料 ===
+// 多人共用此網頁時各自獨立；刷新頁面 = 重新開始，避免資料互相干擾
+function saveData() { /* no-op：資料只存在記憶體中，刷新即清空 */ }
+// 清掉舊版可能殘留的 localStorage（從之前的版本升上來不要帶舊資料）
+try { localStorage.removeItem('mia_dashboard_v3'); localStorage.removeItem('restaurant_dashboard_v2'); localStorage.removeItem('restaurant_dashboard_v1'); } catch (e) {}
+
+let currentPage = 'sales';
+let activeCostCat = '食材';
+let salesDraft = [];
+let viewMonth = ''; // 不自動帶今天月份，讓老闆自己 key 入
+
+/* ============ AGGREGATIONS ============ */
+const monthSales = m => SALES.filter(s => s.month === m);
+const monthCosts = m => COSTS.filter(c => c.month === m);
+const monthRevenue = m => monthSales(m).reduce((s,r) => s + r.price*r.qty, 0);
+const monthCogs = m => monthSales(m).reduce((s,r) => s + r.cost*r.qty, 0);
+const monthFixedCost = m => monthCosts(m).reduce((s,c) => s + c.amt, 0);
+
+/* ============ NAV ============ */
+function go(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-btn, .bn-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === page);
+  });
+  if (page === 'sales') renderSalesEntry();
+  if (page === 'cost') renderCost();
+  if (page === 'overview') renderOverview();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.nav-btn, .bn-btn').forEach(b => {
+  b.addEventListener('click', () => go(b.dataset.page));
+});
+
+/* ============ OVERVIEW + INSIGHTS ============ */
+let chartItems, chartCostPie;
+
+function renderOverview() {
+  const m = $('overview-month').value || viewMonth;
+  $('overview-month').value = m;
+
+  if (!m) {
+    $('no-month-prompt').style.display = 'block';
+    $('overview-content').style.display = 'none';
+    return;
+  }
+  $('no-month-prompt').style.display = 'none';
+  $('overview-content').style.display = 'block';
+
+  const rev = monthRevenue(m);
+  const totalCost = monthFixedCost(m); // 只算老闆實際 key 的支出，不再自動估算食材
+  const net = rev - totalCost;
+  const margin = rev ? (net/rev*100) : 0;
+
+  const items = monthSales(m);
+  const totalQty = items.reduce((s,r)=>s+r.qty,0);
+  $('kpi-revenue').textContent = fmt(rev);
+  $('kpi-items').textContent = items.length;
+  $('kpi-items-delta').textContent = `售出 ${totalQty} 份`;
+  $('kpi-cost').textContent = fmt(totalCost);
+  $('kpi-cost-delta').textContent = `來自成本紀錄頁`;
+  $('kpi-net').textContent = fmt(net);
+  $('kpi-margin').textContent = `淨利率 ${margin.toFixed(1)}%`;
+  $('kpi-net-card').className = 'kpi ' + (net>=0?'green':'red');
+
+  // Compare to previous month
+  const [y, mm] = m.split('-').map(Number);
+  const prev = new Date(y, mm-2, 1);
+  const prevM = monthStr(prev);
+  const prevRev = monthRevenue(prevM);
+  const dEl = $('kpi-revenue-delta');
+  if (prevRev) {
+    const delta = (rev - prevRev) / prevRev * 100;
+    dEl.textContent = `${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(1)}% 比上月`;
+    dEl.className = 'kpi-delta ' + (delta>=0?'up':'down');
+  } else {
+    dEl.textContent = '— 上月無資料';
+    dEl.className = 'kpi-delta';
+  }
+
+  // Top items by revenue
+  const sortedByRev = [...items].sort((a,b) => b.price*b.qty - a.price*a.qty);
+  const top5 = sortedByRev.slice(0, 5);
+  $('top-items').innerHTML = top5.length ? top5.map((it,i) =>
+    `<div class="item-row">
+      <span class="item-rank ${i===0?'top':''}">${i+1}</span>
+      <div>
+        <div class="item-name">${it.name}</div>
+        <div class="item-meta">售 NT$${it.price} × ${it.qty} 份</div>
+      </div>
+      <span></span>
+      <span class="item-amount">NT$ ${fmt(it.price*it.qty)}</span>
+    </div>`
+  ).join('') : `<div class="empty-state"><div class="ic">🍱</div>本月還沒有銷售紀錄</div>`;
+
+  // P&L quick
+  const plRows = [
+    { name:'營收', amt: rev, color:'#2E9C6E' },
+    { name:'本月支出', amt: -totalCost, color:'#E85D2F' },
+    { name:'淨利', amt: net, color: net>=0?'#2E9C6E':'#D64545', total:true },
+  ];
+  const max = Math.max(...plRows.map(r => Math.abs(r.amt))) || 1;
+  $('pl-quick').innerHTML = plRows.map(r =>
+    `<div class="pl-row ${r.total?'total':''}">
+      <span>${r.name}</span>
+      <div class="pl-bar"><div class="pl-bar-fill" style="width:${Math.abs(r.amt)/max*100}%;background:${r.color}"></div></div>
+      <span class="pl-amt" style="color:${r.amt<0?'var(--red)':r.total?r.color:'var(--ink)'}">${r.amt<0?'−':''}NT$ ${fmt(Math.abs(r.amt))}</span>
+    </div>`
+  ).join('');
+
+  drawItemsChart(items);
+  drawCostPie(m);
+  renderInsights(m, items, rev, totalCost, net, margin);
+}
+
+function drawItemsChart(items) {
+  const sorted = [...items].sort((a,b) => b.price*b.qty - a.price*a.qty).slice(0, 8);
+  if (chartItems) chartItems.destroy();
+  if (sorted.length === 0) {
+    chartItems = new Chart($('chart-items'), {
+      type:'bar',
+      data:{ labels:['還沒有資料'], datasets:[{ data:[0], backgroundColor:'#ECE7DD' }]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{enabled:false}},
+        scales:{ x:{grid:{display:false}}, y:{grid:{color:'#F2EFE9'}}}}
+    });
+    return;
+  }
+  chartItems = new Chart($('chart-items'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s.name),
+      datasets: [{
+        data: sorted.map(s => s.price*s.qty),
+        backgroundColor: '#E85D2F', borderRadius: 8, barThickness: 22
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:c => 'NT$ '+fmt(c.parsed.x)}}},
+      scales: { x:{ grid:{color:'#F2EFE9'}, ticks:{ callback:v => 'NT$'+(v/1000)+'k'}}, y:{grid:{display:false}}}
+    }
+  });
+}
+
+function drawCostPie(m) {
+  const grouped = {};
+  monthCosts(m).forEach(c => grouped[c.cat] = (grouped[c.cat]||0) + c.amt);
+  const labels = Object.keys(grouped);
+  const data = Object.values(grouped);
+  if (chartCostPie) chartCostPie.destroy();
+  if (labels.length === 0) {
+    chartCostPie = new Chart($('chart-cost-pie'), {
+      type:'doughnut',
+      data:{ labels:['還沒有資料'], datasets:[{ data:[1], backgroundColor:['#ECE7DD'], borderWidth:0 }]},
+      options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+        plugins:{ legend:{display:false}, tooltip:{enabled:false}}}
+    });
+    return;
+  }
+  chartCostPie = new Chart($('chart-cost-pie'), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:['#E85D2F','#2F6FE8','#D4A02E','#2E9C6E','#9F7AEA','#D64545','#94A3B8'], borderWidth:0 }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{
+        legend:{ position:'right', labels:{font:{size:11}, boxWidth:10}},
+        tooltip:{ callbacks:{ label:c => c.label+': NT$'+fmt(c.parsed) }}
+      }
+    }
+  });
+}
+
+function renderInsights(m, items, rev, totalCost, net, margin) {
+  const insights = [];
+
+  // 1. 淨利警訊（淨利率 < 30% 警訊；≥ 30% 健康）
+  if (rev > 0) {
+    if (margin >= 30) {
+      insights.push({ type:'good', tag:'淨利狀態：健康',
+        title:`本月淨利率 ${margin.toFixed(1)}%，達到健康標準`,
+        text:`本月淨利 NT$${fmt(net)}（30% 以上視為健康）。維持目前的經營節奏，把多出來的利潤拿一部分做行銷或設備升級，能讓下個月再往上走。`});
+    } else {
+      const gap = (30 - margin);
+      const needed = rev * gap / 100;
+      insights.push({ type:'bad', tag:'淨利警訊',
+        title:`本月淨利率僅 ${margin.toFixed(1)}%，低於健康標準 30%`,
+        text:`本月淨利 NT$${fmt(net)}。要達到 30% 健康線還缺 NT$${fmt(needed)}。建議優先檢查：(1) 食材成本是否異常 (2) 是否有大筆一次性支出 (3) 售價是否該調整。`});
+    }
+  }
+
+  // 2. 明星商品（依「銷售數量」排行）
+  if (items.length) {
+    const sortedByQty = [...items].sort((a,b) => b.qty - a.qty);
+    const star = sortedByQty[0];
+    const totalQty = items.reduce((s,r) => s+r.qty, 0);
+    const sharePct = totalQty ? (star.qty / totalQty * 100) : 0;
+    insights.push({ type:'good', tag:'⭐ 明星商品',
+      title:`「${star.name}」是本月最受歡迎的品項（賣出 ${star.qty} 份）`,
+      text:`佔本月總銷量的 ${sharePct.toFixed(1)}%，貢獻營收 NT$${fmt(star.price*star.qty)}。如果要做行銷活動，建議拿這個品項出來打廣告，或設計優惠搭配（例如「${star.name} + 飲料 折 10 元」）能直接帶動整體業績。`});
+
+    // 工作優化：用 TOP 5 銷量品項，提醒老闆出餐流程
+    const top5Pop = sortedByQty.slice(0, 5);
+    if (top5Pop.length >= 2) {
+      const top5Names = top5Pop.map(it => `「${it.name}」`).join('、');
+      const top5TotalQty = top5Pop.reduce((s,it) => s + it.qty, 0);
+      insights.push({ type:'warn', tag:'⚙️ 工作優化',
+        title:`本月 TOP ${top5Pop.length} 熱賣品項：要注意出餐流程`,
+        text:`${top5Names}這幾道是本月賣最多的（共 ${top5TotalQty} 份），尖峰時段很可能會被一起點，導致出餐卡在一起。建議：(1) 提前 30 分鐘把半成品備好 (2) 把這幾道的食材動線縮短，最近的位置擺好 (3) 排班時讓最熟練的人負責這幾道，避免新手卡單拖慢全場。`});
+    }
+  }
+
+  // 3. 月對月營收
+  const [y, mo] = m.split('-').map(Number);
+  const prevM = monthStr(new Date(y, mo-2, 1));
+  const prevRev = monthRevenue(prevM);
+  if (rev && prevRev) {
+    const diff = (rev - prevRev) / prevRev * 100;
+    if (diff < -10) {
+      insights.push({ type:'bad', tag:'營收下滑',
+        title:`本月營收比上月少 ${Math.abs(diff).toFixed(1)}%`,
+        text:`本月 NT$${fmt(rev)}，上月 NT$${fmt(prevRev)}。檢查是否有品項下架、客流減少、或促銷結束。`});
+    } else if (diff > 10) {
+      insights.push({ type:'good', tag:'營收成長',
+        title:`本月營收比上月多 ${diff.toFixed(1)}%`,
+        text:`從 NT$${fmt(prevRev)} 成長到 NT$${fmt(rev)}。維持現有節奏，可以分析是哪幾個品項帶動的。`});
+    }
+  }
+
+  if (insights.length === 0) {
+    insights.push({ type:'primary', tag:'尚無洞察',
+      title:'本月還沒有足夠資料',
+      text:'先到「銷售紀錄」與「成本紀錄」輸入資料，系統會自動找出可以優化的地方。' });
+  }
+
+  $('insight-list').innerHTML = insights.map(i =>
+    `<div class="insight-card ${i.type}">
+      <span class="tag ${i.type}">${i.tag}</span>
+      <h4>${i.title}</h4>
+      <p>${i.text}</p>
+    </div>`
+  ).join('');
+}
+
+/* ============ SALES ENTRY ============ */
+function renderSalesEntry() {
+  const m = $('sales-month').value || viewMonth;
+  $('sales-month').value = m;
+  $('sales-month-title').textContent = m ? `${monthLabel(m)} 銷售明細` : '銷售明細（請先選擇月份）';
+
+  if (!m) {
+    salesDraft = [];
+    $('sales-entries').innerHTML = `<div class="empty-state"><div class="ic">📅</div>請先在上方選擇報表月份，才能輸入銷售紀錄。</div>`;
+    updateSalesSummary();
+    return;
+  }
+
+  salesDraft = monthSales(m).map(s => ({...s}));
+  if (salesDraft.length === 0) {
+    salesDraft.push({ id: 'd-'+Date.now(), name:'', price:'', qty:'', cost:'' });
+  }
+  drawSalesEntries();
+}
+
+function drawSalesEntries() {
+  $('sales-entries').innerHTML = salesDraft.map((row, idx) => {
+    const subtotal = (Number(row.price)||0) * (Number(row.qty)||0);
+    return `<div class="sales-entry-row">
+      <div class="c-name"><input class="cell-input" placeholder="品項 例：牛肉麵"
+            value="${row.name||''}" oninput="updateDraft(${idx}, 'name', this.value)" /></div>
+      <div class="c-price"><input class="cell-input" type="number" inputmode="numeric" placeholder="售價"
+            value="${row.price===''||row.price===undefined?'':row.price}" oninput="updateDraft(${idx}, 'price', this.value)" /></div>
+      <div class="c-qty"><input class="cell-input" type="number" inputmode="numeric" placeholder="本月賣幾份"
+            value="${row.qty===''||row.qty===undefined?'':row.qty}" oninput="updateDraft(${idx}, 'qty', this.value)" /></div>
+      <div class="c-sub"><input class="cell-input subtotal" readonly value="${subtotal>0?'NT$ '+fmt(subtotal):'—'}" /></div>
+      <div class="c-del"><button class="del-btn" onclick="removeDraftRow(${idx})" title="刪除">✕</button></div>
+    </div>`;
+  }).join('');
+  updateSalesSummary();
+}
+
+function updateDraft(idx, field, val) {
+  if (!salesDraft[idx]) return;
+  salesDraft[idx][field] = field === 'name' ? val : (val === '' ? '' : Number(val));
+  const row = salesDraft[idx];
+  const subtotal = (Number(row.price)||0) * (Number(row.qty)||0);
+  const subEls = document.querySelectorAll('#sales-entries .sales-entry-row .c-sub .cell-input');
+  if (subEls[idx]) subEls[idx].value = subtotal>0 ? 'NT$ '+fmt(subtotal) : '—';
+  updateSalesSummary();
+}
+
+function addSalesRow() {
+  const m = $('sales-month').value;
+  if (!m) { showToast('請先在上方選擇月份'); return; }
+  salesDraft.push({ id: 'd-'+Date.now()+Math.random().toString(36).slice(2,6), name:'', price:'', qty:'', cost:'' });
+  drawSalesEntries();
+  setTimeout(() => {
+    const rows = document.querySelectorAll('#sales-entries .sales-entry-row .c-name input');
+    if (rows.length) rows[rows.length-1].focus();
+  }, 50);
+}
+
+function removeDraftRow(idx) {
+  salesDraft.splice(idx, 1);
+  if (salesDraft.length === 0) {
+    salesDraft.push({ id: 'd-'+Date.now(), name:'', price:'', qty:'', cost:'' });
+  }
+  drawSalesEntries();
+}
+
+function updateSalesSummary() {
+  const valid = salesDraft.filter(r => r.name && Number(r.price) > 0 && Number(r.qty) > 0);
+  $('sales-count').textContent = valid.length;
+  $('sales-qty').textContent = valid.reduce((s,r)=>s+Number(r.qty),0);
+  $('sales-total').textContent = fmt(valid.reduce((s,r)=>s+Number(r.price)*Number(r.qty),0));
+}
+
+function saveSales() {
+  const m = $('sales-month').value;
+  if (!m) { showToast('請先選擇月份'); return; }
+  const valid = salesDraft.filter(r => r.name && Number(r.price) > 0 && Number(r.qty) > 0);
+  SALES = SALES.filter(s => s.month !== m);
+  valid.forEach(r => {
+    SALES.push({
+      id: r.id || 's-'+Date.now()+Math.random().toString(36).slice(2,6),
+      month: m,
+      name: r.name.trim(),
+      price: Number(r.price),
+      qty: Number(r.qty),
+      cost: Number(r.cost) || Math.round(Number(r.price)*0.35),
+    });
+  });
+  saveData();
+  showToast(`已儲存 ${monthLabel(m)} 共 ${valid.length} 個品項`);
+}
+
+/* ============ COST ENTRY ============ */
+document.querySelectorAll('.cost-cat').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.cost-cat').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    activeCostCat = el.dataset.cat;
+  });
+});
+
+function renderCost() {
+  const m = $('cost-month').value || viewMonth;
+  $('cost-month').value = m;
+  $('cost-month-title').textContent = m ? `${monthLabel(m)} 已記錄成本` : '已記錄成本（請先選擇月份）';
+
+  if (!m) {
+    $('cost-list').innerHTML = `<div class="empty-state"><div class="ic">📅</div>請先在上方選擇報表月份。</div>`;
+    $('cost-total').textContent = '0';
+    return;
+  }
+
+  const rows = monthCosts(m).slice().sort((a,b) => b.id.localeCompare(a.id));
+  $('cost-list').innerHTML = rows.length ? rows.map(c =>
+    `<div class="cost-list-row">
+      <span class="cost-cat-tag">${c.cat}</span>
+      <div>
+        <div class="item-name">${c.note || c.cat}</div>
+        <div class="item-meta">${c.cat}</div>
+      </div>
+      <span class="item-amount" style="color:var(--red)">−NT$ ${fmt(c.amt)}</span>
+      <button class="del-btn" onclick="removeCost('${c.id}')" title="刪除">✕</button>
+    </div>`
+  ).join('') : `<div class="empty-state"><div class="ic">💸</div>${monthLabel(m)} 還沒有成本紀錄</div>`;
+  $('cost-total').textContent = fmt(monthFixedCost(m));
+}
+
+function addCost() {
+  const m = $('cost-month').value;
+  if (!m) { showToast('請先選擇月份'); return; }
+  const amt = parseInt($('cost-amt').value, 10);
+  if (!amt || amt <= 0) { showToast('請輸入金額'); return; }
+  COSTS.push({
+    id: 'cost-'+Date.now(),
+    month: m,
+    cat: activeCostCat,
+    amt,
+    note: $('cost-note').value || '',
+  });
+  $('cost-amt').value = '';
+  $('cost-note').value = '';
+  saveData();
+  showToast(`已記下 ${activeCostCat} NT$ ${fmt(amt)}`);
+  renderCost();
+}
+
+function removeCost(id) {
+  if (!confirm('確定要刪除這筆紀錄？')) return;
+  COSTS = COSTS.filter(c => c.id !== id);
+  saveData();
+  renderCost();
+}
+
+
+/* ============ EXPORT TO EXCEL (.xlsx) ============ */
+async function exportAllPages() {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel 工具還沒載入完，請稍等');
+    return;
+  }
+  const m = $('overview-month').value || $('sales-month').value || $('cost-month').value;
+  if (!m) {
+    showToast('請先選擇報表月份');
+    return;
+  }
+  ['overview-month','sales-month','cost-month'].forEach(id => $(id).value = m);
+  viewMonth = m;
+
+  $('export-overlay').classList.add('show');
+  $('export-status').textContent = `準備產生 Excel（${monthLabel(m)}）...`;
+
+  try {
+    const items = monthSales(m);
+    const costs = monthCosts(m);
+    const rev = monthRevenue(m);
+    const totalCost = monthFixedCost(m);
+    const net = rev - totalCost;
+    const margin = rev ? (net/rev*100) : 0;
+    const sortedByQty = [...items].sort((a,b) => b.qty - a.qty);
+    const totalQty = items.reduce((s,r) => s + r.qty, 0);
+
+    // ---------- Sheet 1: 銷售紀錄 ----------
+    const salesData = [
+      [`${monthLabel(m)} 銷售紀錄`],
+      [],
+      ['品項名稱', '單價 (NT$)', '本月份數', '小計 (NT$)']
+    ];
+    if (items.length === 0) {
+      salesData.push(['（本月無銷售紀錄）', '', '', '']);
+    } else {
+      items.forEach(it => salesData.push([it.name, it.price, it.qty, it.price*it.qty]));
+      salesData.push([]);
+      salesData.push(['', '', '合計', items.reduce((s,r) => s + r.price*r.qty, 0)]);
+      salesData.push(['', '', '總份數', totalQty]);
+      salesData.push(['', '', '品項數', items.length]);
+    }
+
+    // ---------- Sheet 2: 成本紀錄 ----------
+    const costData = [
+      [`${monthLabel(m)} 成本紀錄`],
+      [],
+      ['類別', '金額 (NT$)', '備註']
+    ];
+    if (costs.length === 0) {
+      costData.push(['（本月無成本紀錄）', '', '']);
+    } else {
+      costs.forEach(c => costData.push([c.cat, c.amt, c.note || '']));
+      costData.push([]);
+      costData.push(['合計', costs.reduce((s,c) => s + c.amt, 0), '']);
+      // 各類別小計
+      const grouped = {};
+      costs.forEach(c => grouped[c.cat] = (grouped[c.cat]||0) + c.amt);
+      costData.push([]);
+      costData.push(['== 各類別小計 ==', '', '']);
+      Object.entries(grouped).forEach(([cat, amt]) => costData.push([cat, amt, '']));
+    }
+
+    // ---------- Sheet 3: 本月總覽 + 經營洞察 ----------
+    const overviewData = [
+      [`Mia 餐飲 ${monthLabel(m)} 月報`],
+      [],
+      ['== 關鍵指標 =='],
+      ['本月營收 (NT$)', rev],
+      ['本月支出 (NT$)', totalCost],
+      ['本月淨利 (NT$)', net],
+      ['淨利率', `${margin.toFixed(1)}%`],
+      ['品項數', items.length],
+      ['總份數', totalQty],
+      [],
+      ['== 銷售排行 TOP 5 =='],
+      ['排名', '品項', '單價', '份數', '營收貢獻'],
+    ];
+    if (sortedByQty.length === 0) {
+      overviewData.push(['（本月無資料）', '', '', '', '']);
+    } else {
+      sortedByQty.slice(0, 5).forEach((it, i) => {
+        overviewData.push([i+1, it.name, it.price, it.qty, it.price*it.qty]);
+      });
+    }
+    overviewData.push([]);
+    overviewData.push(['== 經營洞察 ==']);
+
+    if (rev > 0) {
+      if (margin >= 30) {
+        overviewData.push(['淨利狀態', `健康：淨利率 ${margin.toFixed(1)}% 達 30% 標準（淨利 NT$${fmt(net)}）`]);
+      } else {
+        const needed = rev * (30 - margin) / 100;
+        overviewData.push(['淨利警訊', `淨利率 ${margin.toFixed(1)}% 低於 30% 健康線，距標準缺 NT$${fmt(needed)}`]);
+      }
+    } else {
+      overviewData.push(['淨利狀態', '尚未輸入銷售資料']);
+    }
+
+    if (sortedByQty.length) {
+      const star = sortedByQty[0];
+      const sharePct = totalQty ? (star.qty / totalQty * 100) : 0;
+      overviewData.push(['⭐ 明星商品',
+        `「${star.name}」賣出 ${star.qty} 份，佔總銷量 ${sharePct.toFixed(1)}%。建議拿來打廣告或設計優惠搭配。`]);
+
+      const top5 = sortedByQty.slice(0, 5);
+      if (top5.length >= 2) {
+        const top5Names = top5.map(it => `「${it.name}」`).join('、');
+        const top5Qty = top5.reduce((s, it) => s + it.qty, 0);
+        overviewData.push(['⚙️ 工作優化',
+          `本月 TOP ${top5.length} 熱賣：${top5Names}（共 ${top5Qty} 份）。注意尖峰時段出餐流程，建議提前備半成品、縮短食材動線、由熟練人員負責。`]);
+      }
+    }
+
+    // 月對月
+    const [y, mo] = m.split('-').map(Number);
+    const prevM = monthStr(new Date(y, mo-2, 1));
+    const prevRev = monthRevenue(prevM);
+    if (rev && prevRev) {
+      const diff = (rev - prevRev) / prevRev * 100;
+      const arrow = diff >= 0 ? '▲' : '▼';
+      overviewData.push(['月對月', `${arrow} 比上月 ${Math.abs(diff).toFixed(1)}%（本月 NT$${fmt(rev)}、上月 NT$${fmt(prevRev)}）`]);
+    }
+
+    // ---------- 組裝 workbook ----------
+    const wb = XLSX.utils.book_new();
+
+    const ws1 = XLSX.utils.aoa_to_sheet(salesData);
+    ws1['!cols'] = [{wch:22}, {wch:14}, {wch:12}, {wch:14}];
+    if (ws1['!merges'] === undefined) ws1['!merges'] = [];
+    ws1['!merges'].push({ s:{r:0,c:0}, e:{r:0,c:3} }); // 第一列標題合併
+    XLSX.utils.book_append_sheet(wb, ws1, '1.銷售紀錄');
+
+    const ws2 = XLSX.utils.aoa_to_sheet(costData);
+    ws2['!cols'] = [{wch:18}, {wch:14}, {wch:32}];
+    ws2['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:2} }];
+    XLSX.utils.book_append_sheet(wb, ws2, '2.成本紀錄');
+
+    const ws3 = XLSX.utils.aoa_to_sheet(overviewData);
+    ws3['!cols'] = [{wch:22}, {wch:30}, {wch:10}, {wch:10}, {wch:14}];
+    ws3['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:4} }];
+    XLSX.utils.book_append_sheet(wb, ws3, '3.本月總覽');
+
+    XLSX.writeFile(wb, `Mia餐飲 ${monthLabel(m)} 月報.xlsx`);
+
+    $('export-status').textContent = '✅ Excel 已下載！';
+    await new Promise(r => setTimeout(r, 700));
+  } catch (e) {
+    console.error(e);
+    $('export-status').textContent = '匯出失敗：' + (e.message || '未知錯誤');
+    await new Promise(r => setTimeout(r, 1500));
+  } finally {
+    $('export-overlay').classList.remove('show');
+    showToast('Excel 報告已下載完成');
+  }
+}
+
+/* ============ INIT ============ */
+function setupMonthInputs() {
+  ['overview-month','sales-month','cost-month'].forEach(id => {
+    const el = $(id);
+    el.value = viewMonth || ''; // 不自動帶今天月份
+    el.addEventListener('change', () => {
+      viewMonth = el.value || '';
+      ['overview-month','sales-month','cost-month'].forEach(otherId => {
+        if (otherId !== id) $(otherId).value = viewMonth;
+      });
+      saveData();
+      if (currentPage === 'overview') renderOverview();
+      if (currentPage === 'sales') renderSalesEntry();
+      if (currentPage === 'cost') renderCost();
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupMonthInputs();
+  renderSalesEntry(); // 預設第一頁
+});
+</script>
+</body>
+</html>
